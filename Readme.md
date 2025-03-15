@@ -72,6 +72,10 @@ curl -X POST http://localhost:8080/login -H "Content-Type: application/json" -d 
 curl -X GET http://localhost:8080/user/get/user-id
 ```
 
+### Postman Collection
+
+A Postman collection is available to help you test the API endpoints. You can find the collection file at `social.postman_collection.json` in the project root directory. Import this file into Postman to get started with the predefined requests.
+
 ### License
 
 This project is licensed under the MIT License.
