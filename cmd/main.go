@@ -26,6 +26,7 @@ func main() {
 	mux.HandleFunc("/login", handlers.LoginHandler)
 	mux.HandleFunc("/user/register", handlers.RegisterHandler)
 	mux.HandleFunc("/user/get/", handlers.GetUserHandler)
+	mux.HandleFunc("/user/search", handlers.SearchUsersHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

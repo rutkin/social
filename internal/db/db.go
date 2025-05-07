@@ -23,7 +23,6 @@ func InitDB(dataSourceName string) {
 
 func CreateTables() {
 	query := `
-	DROP TABLE IF EXISTS users;
 	CREATE TABLE IF NOT EXISTS users (
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 		first_name TEXT,
