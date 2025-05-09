@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    extends:
+      file: ../docker-compose.yml
+      service: db
+
+  app:
+    extends:
+      file: ../docker-compose.yml
+      service: app
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: social
+
+  jmeter:
+    build:
+      context: .
+      dockerfile: Dockerfile.jmeter
+    volumes:
+      - ./results:/results
+    depends_on:
+      - app
+    platform: linux/amd64
+
+volumes:
+  pgdata: 

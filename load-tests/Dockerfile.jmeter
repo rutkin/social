@@ -1,0 +1,10 @@
+FROM justb4/jmeter:latest
+
+# Copy test files
+COPY load_test.jmx /load-tests/
+
+# Set working directory
+WORKDIR /load-tests
+
+# Run tests
+CMD ["-n", "-t", "load_test.jmx", "-l", "/results/results.jtl", "-e", "-o", "/results/report"] 
