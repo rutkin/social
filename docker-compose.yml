@@ -11,6 +11,8 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - pgnet
 
   app:
     build: .
@@ -24,6 +26,12 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: social
+    networks:
+      - pgnet
 
 volumes:
   pgdata:
+
+networks:
+  pgnet:
+    external: true

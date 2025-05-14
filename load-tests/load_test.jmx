@@ -122,7 +122,7 @@
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
             <collectionProp name="Arguments.arguments"/>
           </elementProp>
-          <stringProp name="HTTPSampler.path">${BASE_URL}/user/get/${__UUID()}</stringProp>
+          <stringProp name="HTTPSampler.path">${BASE_URL}/user/get/${user_id}</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
           <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
@@ -142,6 +142,18 @@
           <hashTree/>
         </hashTree>
       </hashTree>
+      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="User IDs CSV Data Set">
+        <stringProp name="filename">/load-tests/user_ids.csv</stringProp>
+        <stringProp name="fileEncoding"></stringProp>
+        <boolProp name="ignoreFirstLine">false</boolProp>
+        <boolProp name="quotedData">false</boolProp>
+        <boolProp name="recycle">true</boolProp>
+        <boolProp name="stopThread">false</boolProp>
+        <stringProp name="variableNames">user_id</stringProp>
+        <stringProp name="delimiter">,</stringProp>
+        <boolProp name="shareMode">false</boolProp>
+      </CSVDataSet>
+      <hashTree/>
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="User Search Test Group">
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
           <boolProp name="LoopController.continue_forever">false</boolProp>
@@ -199,4 +211,4 @@ vars.put("LAST_NAME", lastName.length() > 4 ? lastName.substring(0, 4) : lastNam
       </hashTree>
     </hashTree>
   </hashTree>
-</jmeterTestPlan> 
+</jmeterTestPlan>

@@ -1,10 +1,13 @@
 package services
 
 import (
+	"fmt"
 	"social/internal/db"
 	"social/internal/errors"
 	"social/internal/models"
 	"social/internal/utils"
+
+	"github.com/google/uuid"
 )
 
 func RegisterUser(user *models.User) (string, error) {
@@ -36,8 +39,13 @@ func LoginUser(credentials *models.Credentials) (string, error) {
 }
 
 func GetUserByID(id string) (*models.User, error) {
+	_, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID format: %w", err)
+	}
+
 	var user models.User
-	err := db.DB.QueryRow("SELECT id, first_name, last_name, birthdate, biography, city FROM users WHERE id = $1", id).Scan(
+	err = db.DB.QueryRow("SELECT id, first_name, last_name, birthdate, biography, city FROM users WHERE id = $1", id).Scan(
 		&user.ID, &user.FirstName, &user.LastName, &user.Birthdate, &user.Biography, &user.City)
 	if err != nil {
 		return nil, err
