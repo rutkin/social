@@ -1,10 +1,13 @@
 package services
 
 import (
+	"fmt"
 	"social/internal/db"
 	"social/internal/errors"
 	"social/internal/models"
 	"social/internal/utils"
+
+	"github.com/google/uuid"
 )
 
 func RegisterUser(user *models.User) (string, error) {
@@ -14,7 +17,7 @@ func RegisterUser(user *models.User) (string, error) {
 	}
 	user.Password = hashedPassword
 	var userID string
-	err = db.DB.QueryRow("INSERT INTO users (id, first_name, last_name, birthdate, biography, city, password) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6) RETURNING id",
+	err = db.WriteDB.QueryRow("INSERT INTO users (id, first_name, last_name, birthdate, biography, city, password) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6) RETURNING id",
 		user.FirstName, user.LastName, user.Birthdate, user.Biography, user.City, user.Password).Scan(&userID)
 	if err != nil {
 		return "", err
@@ -24,7 +27,7 @@ func RegisterUser(user *models.User) (string, error) {
 
 func LoginUser(credentials *models.Credentials) (string, error) {
 	var storedPassword string
-	err := db.DB.QueryRow("SELECT password FROM users WHERE id = $1", credentials.ID).Scan(&storedPassword)
+	err := db.WriteDB.QueryRow("SELECT password FROM users WHERE id = $1", credentials.ID).Scan(&storedPassword)
 	if err != nil {
 		return "", errors.ErrUserNotFound
 	}
@@ -36,8 +39,13 @@ func LoginUser(credentials *models.Credentials) (string, error) {
 }
 
 func GetUserByID(id string) (*models.User, error) {
+	_, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID format: %w", err)
+	}
+
 	var user models.User
-	err := db.DB.QueryRow("SELECT id, first_name, last_name, birthdate, biography, city FROM users WHERE id = $1", id).Scan(
+	err = db.ReadDB.QueryRow("SELECT id, first_name, last_name, birthdate, biography, city FROM users WHERE id = $1", id).Scan(
 		&user.ID, &user.FirstName, &user.LastName, &user.Birthdate, &user.Biography, &user.City)
 	if err != nil {
 		return nil, err
@@ -52,7 +60,7 @@ func SearchUsers(firstNamePrefix, lastNamePrefix string) ([]models.User, error) 
 		WHERE first_name LIKE $1 AND last_name LIKE $2 
 		ORDER BY id
 	`
-	rows, err := db.DB.Query(query, firstNamePrefix+"%", lastNamePrefix+"%")
+	rows, err := db.ReadDB.Query(query, firstNamePrefix+"%", lastNamePrefix+"%")
 	if err != nil {
 		return nil, err
 	}
