@@ -1,11 +1,54 @@
 package services
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"social/internal/db"
 	"social/internal/models"
+	"time"
+
+	"github.com/go-redis/redis/v8"
 )
 
-func GetFriendPosts(userID string, offset, limit int) ([]models.Post, error) {
+var (
+	redisClient = redis.NewClient(&redis.Options{
+		Addr: "redis:6379", // Redis host and port
+	})
+)
+
+const (
+	cacheKeyPrefix = "friend_posts:"
+	cacheTTL       = 5 * time.Minute // Cache expiration time
+	cacheLimit     = 1000            // Maximum number of posts to keep in cache
+)
+
+func GetFriendPosts(ctx context.Context, userID string, offset, limit int) ([]models.Post, error) {
+	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, userID)
+
+	// Check if posts are cached
+	cachedPosts, err := redisClient.LRange(ctx, cacheKey, 0, -1).Result()
+	if err == nil && len(cachedPosts) > 0 {
+		var posts []models.Post
+		for _, postJSON := range cachedPosts {
+			var post models.Post
+			if err := json.Unmarshal([]byte(postJSON), &post); err == nil {
+				posts = append(posts, post)
+			}
+		}
+		// Apply offset and limit to the cached posts
+		start := offset
+		end := offset + limit
+		if start > len(posts) {
+			return []models.Post{}, nil
+		}
+		if end > len(posts) {
+			end = len(posts)
+		}
+		return posts[start:end], nil
+	}
+
+	// Fetch posts from the database
 	query := `
 		SELECT posts.id, posts.text, posts.created_at, posts.author_user_id
 		FROM posts
@@ -33,6 +76,17 @@ func GetFriendPosts(userID string, offset, limit int) ([]models.Post, error) {
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
+
+	// Cache the posts
+	for _, post := range posts {
+		postJSON, err := json.Marshal(post)
+		if err == nil {
+			redisClient.LPush(ctx, cacheKey, postJSON)
+		}
+	}
+	// Trim the cache to the last 1000 entries
+	redisClient.LTrim(ctx, cacheKey, 0, cacheLimit-1)
+	redisClient.Expire(ctx, cacheKey, cacheTTL)
 
 	return posts, nil
 }

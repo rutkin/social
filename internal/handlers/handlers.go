@@ -120,7 +120,7 @@ func PostFeedHandler(w http.ResponseWriter, r *http.Request) {
 		limit, _ = strconv.Atoi(val)
 	}
 
-	posts, err := services.GetFriendPosts(userID, offset, limit)
+	posts, err := services.GetFriendPosts(r.Context(), userID, offset, limit)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
