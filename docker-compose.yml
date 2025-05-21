@@ -61,6 +61,13 @@ services:
     networks:
       - pgnet
 
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - pgnet
+
   app:
     build: .
     depends_on:
@@ -75,6 +82,8 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: social
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     networks:
       - pgnet
 

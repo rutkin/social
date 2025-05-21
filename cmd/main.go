@@ -33,6 +33,7 @@ func main() {
 	mux.HandleFunc("/user/register", handlers.RegisterHandler)
 	mux.HandleFunc("/user/get/", handlers.GetUserHandler)
 	mux.HandleFunc("/user/search", handlers.SearchUsersHandler)
+	mux.HandleFunc("GET /post/feed", handlers.PostFeedHandler)
 
 	log.Println("Server starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
@@ -45,4 +46,3 @@ func getEnv(key, fallback string) string {
 	}
 	return value
 }
-

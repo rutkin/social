@@ -63,6 +63,19 @@ func CreateTables() {
 		city TEXT,
 		password TEXT
 	);
+
+	CREATE TABLE IF NOT EXISTS posts (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		author_user_id UUID REFERENCES users(id),
+		text TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS friends (
+		user_id UUID REFERENCES users(id),
+		friend_id UUID REFERENCES users(id),
+		PRIMARY KEY (user_id, friend_id)
+	);
 	`
 	// Используем WriteDB для создания таблиц
 	_, err := WriteDB.Exec(query)
