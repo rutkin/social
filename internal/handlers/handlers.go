@@ -7,6 +7,7 @@ import (
 	"social/internal/errors"
 	"social/internal/models"
 	"social/internal/services"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -102,4 +103,29 @@ func SearchUsersHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("SearchUsersHandler: found %d users for first_name='%s', last_name='%s'", len(users), firstName, lastName)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
+}
+
+func PostFeedHandler(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("User-Id")
+	if userID == "" {
+		http.Error(w, "User-Id header is required", http.StatusBadRequest)
+		return
+	}
+
+	offset, limit := 0, 10
+	if val := r.URL.Query().Get("offset"); val != "" {
+		offset, _ = strconv.Atoi(val)
+	}
+	if val := r.URL.Query().Get("limit"); val != "" {
+		limit, _ = strconv.Atoi(val)
+	}
+
+	posts, err := services.GetFriendPosts(r.Context(), userID, offset, limit)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
 }

@@ -14,3 +14,10 @@ type Credentials struct {
 	ID       string `json:"id"`
 	Password string `json:"password"`
 }
+
+type Post struct {
+	ID           string `json:"id"`
+	Text         string `json:"text"`
+	CreatedAt    string `json:"created_at"`
+	AuthorUserID string `json:"author_user_id"`
+}
