@@ -39,6 +39,11 @@ func InitDB(writeHost, writePort, readHost, readPort, user, password, dbname str
 		log.Fatalf("Failed to ping read database: %v", err)
 	}
 	log.Printf("Connected to read database at %s:%s", readHost, readPort)
+
+	// Создаем таблицу сообщений
+	if err := createMessagesTable(); err != nil {
+		log.Fatalf("Failed to create messages table: %v", err)
+	}
 }
 
 // buildDSN формирует строку подключения к PostgreSQL
@@ -82,6 +87,24 @@ func CreateTables() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// createMessagesTable создает таблицу сообщений
+func createMessagesTable() error {
+	query := `
+		CREATE TABLE IF NOT EXISTS messages (
+			id SERIAL PRIMARY KEY,
+			from_user_id UUID NOT NULL,
+			to_user_id UUID NOT NULL,
+			text TEXT NOT NULL,
+			created_at TIMESTAMP NOT NULL
+		)
+	`
+	_, err := WriteDB.Exec(query)
+	if err != nil {
+		log.Printf("Failed to create messages table: %v", err)
+	}
+	return err
 }
 
 // Close закрывает все соединения с базой данных

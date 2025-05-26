@@ -129,3 +129,61 @@ func PostFeedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(posts)
 }
+
+func SendMessageHandler(w http.ResponseWriter, r *http.Request) {
+	fromUserID := r.Header.Get("User-Id")
+	if fromUserID == "" {
+		http.Error(w, "User-Id header is required", http.StatusBadRequest)
+		return
+	}
+
+	toUserID := r.PathValue("user_id")
+	if toUserID == "" {
+		http.Error(w, "Recipient user ID is required", http.StatusBadRequest)
+		return
+	}
+
+	var payload struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if payload.Text == "" {
+		http.Error(w, "Message text cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	err := services.SendMessage(fromUserID, toUserID, payload.Text)
+	if err != nil {
+		http.Error(w, "Failed to send message", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func GetDialogHandler(w http.ResponseWriter, r *http.Request) {
+	userID1 := r.Header.Get("User-Id")
+	if userID1 == "" {
+		http.Error(w, "User-Id header is required", http.StatusBadRequest)
+		return
+	}
+
+	userID2 := r.PathValue("user_id")
+	if userID2 == "" {
+		http.Error(w, "Other user ID is required", http.StatusBadRequest)
+		return
+	}
+
+	messages, err := services.GetDialog(userID1, userID2)
+	if err != nil {
+		http.Error(w, "Failed to retrieve dialog", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(messages)
+}

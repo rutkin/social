@@ -34,6 +34,8 @@ func main() {
 	mux.HandleFunc("/user/get/", handlers.GetUserHandler)
 	mux.HandleFunc("/user/search", handlers.SearchUsersHandler)
 	mux.HandleFunc("GET /post/feed", handlers.PostFeedHandler)
+	mux.HandleFunc("POST /dialog/{user_id}/send", handlers.SendMessageHandler)
+	mux.HandleFunc("GET /dialog/{user_id}/list", handlers.GetDialogHandler)
 
 	log.Println("Server starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
