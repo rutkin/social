@@ -18,8 +18,13 @@ func main() {
 	dbPassword := getEnv("DB_PASSWORD", "postgres")
 	dbName := getEnv("DB_NAME", "social")
 
+	citusHost := "citus-coordinator"
+	citusPort := "5432"
+	workerHosts := []string{"citus-worker", "citus-worker-2"}
+	workerPorts := []string{"5432", "5432"}
+
 	// Инициализируем соединения с базой данных
-	db.InitDB(writeHost, writePort, readHost, readPort, dbUser, dbPassword, dbName)
+	db.InitDB(writeHost, writePort, readHost, readPort, citusHost, citusPort, dbUser, dbPassword, dbName, workerHosts, workerPorts)
 	defer db.Close()
 
 	// Создаем таблицы, если они не существуют
