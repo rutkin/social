@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type User struct {
 	ID        string `json:"id"`
 	FirstName string `json:"first_name"`
@@ -20,4 +22,11 @@ type Post struct {
 	Text         string `json:"text"`
 	CreatedAt    string `json:"created_at"`
 	AuthorUserID string `json:"author_user_id"`
+}
+
+type Message struct {
+	FromUserID string    `json:"from"`
+	ToUserID   string    `json:"to"`
+	Text       string    `json:"text"`
+	CreatedAt  time.Time `json:"created_at"`
 }
