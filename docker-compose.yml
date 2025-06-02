@@ -72,6 +72,7 @@ services:
     build: .
     depends_on:
       - haproxy
+      - citus-coordinator
     ports:
       - "8080:8080"
     environment:
@@ -86,10 +87,59 @@ services:
       REDIS_PORT: 6379
     networks:
       - pgnet
+      - citusnet
+
+  citus-coordinator:
+    image: citusdata/citus:latest
+    container_name: citus-coordinator
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: social
+      CITUS_NODE_CONNINFO: "host=citus-coordinator dbname=social user=postgres password=postgres"
+    ports:
+      - "5437:5432" # Dedicated port for Citus coordinator
+    networks:
+      - citusnet
+    depends_on:
+      - citus-worker
+      - citus-worker-2
+    volumes:
+      - ./coordinator-entrypoint.sh:/docker-entrypoint-initdb.d/00-pgpass.sh:ro
+    command: ["docker-entrypoint.sh", "postgres", "-c", "listen_addresses=*", "-c", "shared_preload_libraries=citus", "-c", "wal_level=logical"]
+        
+  citus-worker:
+    image: citusdata/citus:latest
+    container_name: citus-worker
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: social
+    ports:
+      - "5438:5432"
+    networks:
+      - citusnet
+    command: ["docker-entrypoint.sh", "postgres", "-c", "listen_addresses=*", "-c", "shared_preload_libraries=citus"]
+
+  citus-worker-2:
+    image: citusdata/citus:latest
+    container_name: citus-worker-2
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: social
+    ports:
+      - "5439:5432"
+    networks:
+      - citusnet
+    command: ["docker-entrypoint.sh", "postgres", "-c", "listen_addresses=*", "-c", "shared_preload_libraries=citus"]
 
 volumes:
   pgdata:
+  db-data:
 
 networks:
   pgnet:
     external: true
+  citusnet:
+    driver: bridge
