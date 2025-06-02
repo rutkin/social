@@ -39,6 +39,7 @@ func main() {
 	mux.HandleFunc("/user/get/", handlers.GetUserHandler)
 	mux.HandleFunc("/user/search", handlers.SearchUsersHandler)
 	mux.HandleFunc("GET /post/feed", handlers.PostFeedHandler)
+	mux.HandleFunc("POST /post/create", handlers.CreatePostHandler)
 	mux.HandleFunc("POST /dialog/{user_id}/send", handlers.SendMessageHandler)
 	mux.HandleFunc("GET /dialog/{user_id}/list", handlers.GetDialogHandler)
 

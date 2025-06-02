@@ -90,3 +90,15 @@ func GetFriendPosts(ctx context.Context, userID string, offset, limit int) ([]mo
 
 	return posts, nil
 }
+
+func CreatePost(userID, text string) (string, error) {
+	var postID string
+	err := db.WriteDB.QueryRow(
+		"INSERT INTO posts (author_user_id, text) VALUES ($1, $2) RETURNING id",
+		userID, text,
+	).Scan(&postID)
+	if err != nil {
+		return "", err
+	}
+	return postID, nil
+}
