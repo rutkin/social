@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"social/internal/db"
 	"social/internal/models"
+	"social/internal/ws"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -100,5 +101,32 @@ func CreatePost(userID, text string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// Get friend IDs to notify
+	friendIDs, err := getFriendIDs(userID)
+	if err == nil && len(friendIDs) > 0 {
+		ws.NotifyFriends(friendIDs, ws.PostFeedPostedMessage{
+			PostID:       postID,
+			PostText:     text,
+			AuthorUserID: userID,
+		})
+	}
 	return postID, nil
+}
+
+// getFriendIDs returns a slice of user IDs who are friends with the given user
+func getFriendIDs(userID string) ([]string, error) {
+	rows, err := db.ReadDB.Query("SELECT user_id FROM friends WHERE friend_id = $1", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
 }

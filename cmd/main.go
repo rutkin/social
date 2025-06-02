@@ -6,6 +6,7 @@ import (
 	"os"
 	"social/internal/db"
 	"social/internal/handlers"
+	"social/internal/ws"
 )
 
 func main() {
@@ -42,6 +43,7 @@ func main() {
 	mux.HandleFunc("POST /post/create", handlers.CreatePostHandler)
 	mux.HandleFunc("POST /dialog/{user_id}/send", handlers.SendMessageHandler)
 	mux.HandleFunc("GET /dialog/{user_id}/list", handlers.GetDialogHandler)
+	mux.HandleFunc("/ws", ws.ServeWS)
 
 	log.Println("Server starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
