@@ -37,6 +37,7 @@ func main() {
 	log.Printf("Database configuration: Write: %s:%s, Read: %s:%s", writeHost, writePort, readHost, readPort)
 
 	// Init RabbitMQ
+	log.Printf("RABBITMQ_URL: %s", os.Getenv("RABBITMQ_URL"))
 	if err := rabbit.InitRabbit(); err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
