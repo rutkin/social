@@ -85,6 +85,7 @@ services:
       DB_NAME: social
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     networks:
       - pgnet
       - citusnet
@@ -133,6 +134,17 @@ services:
     networks:
       - citusnet
     command: ["docker-entrypoint.sh", "postgres", "-c", "listen_addresses=*", "-c", "shared_preload_libraries=citus"]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - pgnet
 
 volumes:
   pgdata:

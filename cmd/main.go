@@ -1,11 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"social/internal/db"
 	"social/internal/handlers"
+	"social/internal/rabbit"
+	"social/internal/ws"
+	"strconv"
 )
 
 func main() {
@@ -32,6 +36,35 @@ func main() {
 
 	log.Printf("Database configuration: Write: %s:%s, Read: %s:%s", writeHost, writePort, readHost, readPort)
 
+	// Init RabbitMQ
+	log.Printf("RABBITMQ_URL: %s", os.Getenv("RABBITMQ_URL"))
+	if err := rabbit.InitRabbit(); err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+	defer rabbit.CloseRabbit()
+
+	// Создаем очереди для шардов и запускаем воркеры
+	const numShards = 8
+	for shard := 0; shard < numShards; shard++ {
+		queueName := "feed_shard_" + strconv.Itoa(shard)
+		_, err := rabbit.RabbitChan.QueueDeclare(queueName, true, false, false, false, nil)
+		if err != nil {
+			log.Fatalf("Failed to declare queue %s: %v", queueName, err)
+		}
+		go func(qn string) {
+			msgs, _ := rabbit.RabbitChan.Consume(qn, "", true, false, false, false, nil)
+			for d := range msgs {
+				var task struct {
+					FriendIDs []string                 `json:"friend_ids"`
+					Post      ws.PostFeedPostedMessage `json:"post"`
+				}
+				if err := json.Unmarshal(d.Body, &task); err == nil {
+					ws.NotifyFriendsBatch(task.FriendIDs, task.Post)
+				}
+			}
+		}(queueName)
+	}
+
 	// Настраиваем HTTP маршруты
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", handlers.LoginHandler)
@@ -39,8 +72,10 @@ func main() {
 	mux.HandleFunc("/user/get/", handlers.GetUserHandler)
 	mux.HandleFunc("/user/search", handlers.SearchUsersHandler)
 	mux.HandleFunc("GET /post/feed", handlers.PostFeedHandler)
+	mux.HandleFunc("POST /post/create", handlers.CreatePostHandler)
 	mux.HandleFunc("POST /dialog/{user_id}/send", handlers.SendMessageHandler)
 	mux.HandleFunc("GET /dialog/{user_id}/list", handlers.GetDialogHandler)
+	mux.HandleFunc("/ws", ws.ServeWS)
 
 	log.Println("Server starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
