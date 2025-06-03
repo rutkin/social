@@ -134,6 +134,15 @@ services:
       - citusnet
     command: ["docker-entrypoint.sh", "postgres", "-c", "listen_addresses=*", "-c", "shared_preload_libraries=citus"]
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
 volumes:
   pgdata:
   db-data:

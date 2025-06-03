@@ -86,3 +86,21 @@ func NotifyFriends(friendIDs []string, post PostFeedPostedMessage) {
 		}
 	}
 }
+
+// NotifyFriendsBatch sends a post event to a batch of friends' websocket clients
+func NotifyFriendsBatch(friendIDs []string, post PostFeedPostedMessage) {
+	msg, _ := json.Marshal(post)
+	var targets []*Client
+	clientsMutex.RLock()
+	for _, fid := range friendIDs {
+		for c := range clients[fid] {
+			targets = append(targets, c)
+		}
+	}
+	clientsMutex.RUnlock()
+	for _, cl := range targets {
+		go func(cl *Client) {
+			cl.Conn.WriteMessage(websocket.TextMessage, msg)
+		}(cl)
+	}
+}

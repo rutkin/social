@@ -10,5 +10,6 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/gorilla/websocket v1.5.3
 	github.com/lib/pq v1.10.9 // indirect
+	github.com/streadway/amqp v1.1.0
 	golang.org/x/crypto v0.36.0 // indirect
 )

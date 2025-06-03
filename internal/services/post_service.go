@@ -103,7 +103,7 @@ func CreatePost(userID, text string) (string, error) {
 	}
 
 	// Get friend IDs to notify
-	friendIDs, err := getFriendIDs(userID)
+	friendIDs, err := GetFriendIDs(userID)
 	if err == nil && len(friendIDs) > 0 {
 		ws.NotifyFriends(friendIDs, ws.PostFeedPostedMessage{
 			PostID:       postID,
@@ -115,7 +115,7 @@ func CreatePost(userID, text string) (string, error) {
 }
 
 // getFriendIDs returns a slice of user IDs who are friends with the given user
-func getFriendIDs(userID string) ([]string, error) {
+func GetFriendIDs(userID string) ([]string, error) {
 	rows, err := db.ReadDB.Query("SELECT user_id FROM friends WHERE friend_id = $1", userID)
 	if err != nil {
 		return nil, err

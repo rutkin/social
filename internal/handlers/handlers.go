@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"social/internal/errors"
 	"social/internal/models"
+	"social/internal/rabbit"
 	"social/internal/services"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/streadway/amqp"
 )
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -214,6 +216,66 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to create post", http.StatusInternalServerError)
 		return
 	}
+	// Шардинг: публикуем задачи в очереди feed_shard_{N}
+	go func() {
+		friendIDs, _ := services.GetFriendIDs(userID)
+		const batchSize = 100
+		const numShards = 8
+		for i := 0; i < len(friendIDs); i += batchSize {
+			end := i + batchSize
+			if end > len(friendIDs) {
+				end = len(friendIDs)
+			}
+			batch := friendIDs[i:end]
+			// Группируем по шардам
+			shardBatches := make(map[int][]string)
+			for _, fid := range batch {
+				shard := int(hashString(fid)) % numShards
+				shardBatches[shard] = append(shardBatches[shard], fid)
+			}
+			for shard, shardFriendIDs := range shardBatches {
+				task := struct {
+					FriendIDs []string `json:"friend_ids"`
+					Post      struct {
+						PostID       string `json:"postId"`
+						PostText     string `json:"postText"`
+						AuthorUserID string `json:"author_user_id"`
+					} `json:"post"`
+				}{
+					FriendIDs: shardFriendIDs,
+					Post: struct {
+						PostID       string `json:"postId"`
+						PostText     string `json:"postText"`
+						AuthorUserID string `json:"author_user_id"`
+					}{
+						PostID:       postID,
+						PostText:     payload.Text,
+						AuthorUserID: userID,
+					},
+				}
+				body, _ := json.Marshal(task)
+				queueName := "feed_shard_" + strconv.Itoa(shard)
+				rabbit.RabbitChan.Publish(
+					"",        // default exchange
+					queueName, // routing key = имя очереди
+					false, false,
+					amqp.Publishing{
+						ContentType: "application/json",
+						Body:        body,
+					},
+				)
+			}
+		}
+	}()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"id": postID})
+}
+
+// hashString - простая хеш-функция для строк (userID)
+func hashString(s string) uint32 {
+	var h uint32 = 2166136261
+	for i := 0; i < len(s); i++ {
+		h = (h * 16777619) ^ uint32(s[i])
+	}
+	return h
 }
