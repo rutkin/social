@@ -5,6 +5,7 @@ COPY load_test.jmx /load-tests/
 
 # Copy required CSV file
 COPY data/user_ids.csv /load-tests/
+COPY data/dialog_pairs.csv /load-tests/dialog_pairs.csv
 
 # Set working directory
 WORKDIR /load-tests
