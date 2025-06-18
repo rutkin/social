@@ -8,6 +8,7 @@ import (
 	"social/internal/db"
 	"social/internal/handlers"
 	"social/internal/rabbit"
+	"social/internal/services"
 	"social/internal/ws"
 	"strconv"
 )
@@ -63,6 +64,18 @@ func main() {
 				}
 			}
 		}(queueName)
+	}
+
+	// Initialize Redis
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "redis:6379"
+	}
+	db.InitRedis(redisAddr)
+
+	// Инициализация Lua-скриптов для сообщений
+	if err := services.InitMessageScripts(); err != nil {
+		log.Fatalf("Failed to load Redis Lua scripts: %v", err)
 	}
 
 	// Настраиваем HTTP маршруты

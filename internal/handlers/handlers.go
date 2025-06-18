@@ -134,13 +134,17 @@ func PostFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 func SendMessageHandler(w http.ResponseWriter, r *http.Request) {
 	fromUserID := r.Header.Get("User-Id")
+	// Debug log to help trace header value
+	log.Printf("SendMessageHandler: User-Id header value: '%s'", fromUserID)
 	if fromUserID == "" {
+		log.Printf("SendMessageHandler: missing User-Id header")
 		http.Error(w, "User-Id header is required", http.StatusBadRequest)
 		return
 	}
 
 	toUserID := r.PathValue("user_id")
 	if toUserID == "" {
+		log.Printf("SendMessageHandler: missing recipient user_id in path")
 		http.Error(w, "Recipient user ID is required", http.StatusBadRequest)
 		return
 	}
@@ -149,17 +153,20 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request) {
 		Text string `json:"text"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		log.Printf("SendMessageHandler: failed to decode request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	if payload.Text == "" {
+		log.Printf("SendMessageHandler: empty message text")
 		http.Error(w, "Message text cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	err := services.SendMessage(fromUserID, toUserID, payload.Text)
 	if err != nil {
+		log.Printf("SendMessageHandler: failed to send message from %s to %s: %v", fromUserID, toUserID, err)
 		http.Error(w, "Failed to send message", http.StatusInternalServerError)
 		return
 	}
@@ -169,19 +176,24 @@ func SendMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetDialogHandler(w http.ResponseWriter, r *http.Request) {
 	userID1 := r.Header.Get("User-Id")
+	// Debug log to help trace header value
+	log.Printf("GetDialogHandler: User-Id header value: '%s'", userID1)
 	if userID1 == "" {
+		log.Printf("GetDialogHandler: missing User-Id header")
 		http.Error(w, "User-Id header is required", http.StatusBadRequest)
 		return
 	}
 
 	userID2 := r.PathValue("user_id")
 	if userID2 == "" {
+		log.Printf("GetDialogHandler: missing user_id in path")
 		http.Error(w, "Other user ID is required", http.StatusBadRequest)
 		return
 	}
 
 	messages, err := services.GetDialog(userID1, userID2)
 	if err != nil {
+		log.Printf("GetDialogHandler: failed to retrieve dialog between %s and %s: %v", userID1, userID2, err)
 		http.Error(w, "Failed to retrieve dialog", http.StatusInternalServerError)
 		return
 	}

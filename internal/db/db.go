@@ -1,11 +1,13 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"strconv"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	_ "github.com/lib/pq"
 )
 
@@ -15,6 +17,9 @@ var (
 	ReadDB  *sql.DB
 	CitusDB *sql.DB
 )
+
+// RedisClient для работы с Redis
+var RedisClient *redis.Client
 
 // InitDB инициализирует соединения с базой данных для чтения, записи и Citus
 func InitDB(writeHost, writePort, readHost, readPort, citusHost, citusPort, user, password, dbname string, workerHosts []string, workerPorts []string) {
@@ -170,6 +175,20 @@ func createMessagesTable() error {
 	}
 
 	return nil
+}
+
+// InitRedis initializes the Redis connection.
+func InitRedis(redisAddr string) {
+	RedisClient = redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
+
+	ctx := context.Background()
+	_, err := RedisClient.Ping(ctx).Result()
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	log.Printf("Connected to Redis at %s", redisAddr)
 }
 
 // Close закрывает все соединения с базой данных
