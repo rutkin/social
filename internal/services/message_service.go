@@ -1,63 +1,88 @@
 package services
 
 import (
-	"crypto/sha1"
-	"encoding/binary"
-	"math"
+	"context"
+	"encoding/json"
+	"fmt"
 	"social/internal/db"
 	"social/internal/models"
-	"sort"
 	"time"
 )
 
-func SendMessage(fromUserID, toUserID, text string) error {
-	db := db.CitusDB // Use the Citus coordinator for sharded messages
-	query := `
-		INSERT INTO messages (from_user_id, to_user_id, text, created_at, shard_key)
-		VALUES ($1, $2, $3, $4, $5)
+var (
+	sendMessageSha string
+	getDialogSha   string
+)
+
+func InitMessageScripts() error {
+	ctx := context.Background()
+
+	sendMessageScript := `
+		redis.call("LPUSH", "dialog:" .. KEYS[1] .. ":" .. KEYS[2], ARGV[1])
+		redis.call("LPUSH", "dialog:" .. KEYS[2] .. ":" .. KEYS[1], ARGV[1])
+		return "OK"
 	`
-	_, err := db.Exec(query, fromUserID, toUserID, text, time.Now(), calcShardKey(fromUserID, toUserID))
-	return err
+	sha, err := db.RedisClient.ScriptLoad(ctx, sendMessageScript).Result()
+	if err != nil {
+		return fmt.Errorf("failed to load SendMessage script: %w", err)
+	}
+	sendMessageSha = sha
+
+	getDialogScript := `
+		local messages = redis.call("LRANGE", "dialog:" .. KEYS[1] .. ":" .. KEYS[2], 0, -1)
+		return cjson.encode(messages)
+	`
+	sha, err = db.RedisClient.ScriptLoad(ctx, getDialogScript).Result()
+	if err != nil {
+		return fmt.Errorf("failed to load GetDialog script: %w", err)
+	}
+	getDialogSha = sha
+
+	return nil
 }
 
-func GetDialog(userID1, userID2 string) ([]models.Message, error) {
-	db := db.CitusDB // Use the Citus coordinator for sharded messages
-	query := `
-		SELECT from_user_id, to_user_id, text, created_at
-		FROM messages
-		WHERE shard_key = $1 AND
-		((from_user_id = $2 AND to_user_id = $3) OR (from_user_id = $3 AND to_user_id = $2))
-		ORDER BY created_at ASC
-	`
-	rows, err := db.Query(query, calcShardKey(userID1, userID2), userID1, userID2)
-	if err != nil {
-		return nil, err
+// SendMessage stores the message in Redis using a Redis UDF.
+func SendMessage(fromUserID, toUserID, text string) error {
+	ctx := context.Background()
+	message := models.Message{
+		FromUserID: fromUserID,
+		ToUserID:   toUserID,
+		Text:       text,
+		CreatedAt:  time.Now(),
 	}
-	defer rows.Close()
+	messageJSON, err := json.Marshal(message)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
+	// Use EVALSHA to call the Lua script
+	_, err = db.RedisClient.EvalSha(ctx, sendMessageSha, []string{fromUserID, toUserID}, messageJSON).Result()
+	if err != nil {
+		return fmt.Errorf("failed to execute Redis Lua script: %w", err)
+	}
+	return nil
+}
+
+// GetDialog retrieves the dialog messages from Redis using a Redis UDF.
+func GetDialog(userID1, userID2 string) ([]models.Message, error) {
+	ctx := context.Background()
+	result, err := db.RedisClient.EvalSha(ctx, getDialogSha, []string{userID1, userID2}).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute Redis Lua script: %w", err)
+	}
+
+	// result.(string) is a JSON array of strings, each string is a JSON message
+	var rawMessages []string
+	if err := json.Unmarshal([]byte(result.(string)), &rawMessages); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal dialog array: %w", err)
+	}
 
 	var messages []models.Message
-	for rows.Next() {
-		var message models.Message
-		err := rows.Scan(&message.FromUserID, &message.ToUserID, &message.Text, &message.CreatedAt)
-		if err != nil {
-			return nil, err
+	for _, raw := range rawMessages {
+		var msg models.Message
+		if err := json.Unmarshal([]byte(raw), &msg); err == nil {
+			messages = append(messages, msg)
 		}
-		messages = append(messages, message)
 	}
-
 	return messages, nil
-}
-
-func calcShardKey(fromID, toID string) int64 {
-	pair := []string{fromID, toID}
-	sort.Strings(pair)
-
-	// Хешируем объединённую строку
-	joined := pair[0] + pair[1]
-	hash := sha1.Sum([]byte(joined))
-
-	// Используем первые 8 байт как uint64 и делаем его положительным int64
-	val := int64(binary.BigEndian.Uint64(hash[:8]) & math.MaxInt64)
-
-	return val
 }

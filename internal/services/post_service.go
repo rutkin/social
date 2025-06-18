@@ -8,14 +8,6 @@ import (
 	"social/internal/models"
 	"social/internal/ws"
 	"time"
-
-	"github.com/go-redis/redis/v8"
-)
-
-var (
-	redisClient = redis.NewClient(&redis.Options{
-		Addr: "redis:6379", // Redis host and port
-	})
 )
 
 const (
@@ -28,7 +20,7 @@ func GetFriendPosts(ctx context.Context, userID string, offset, limit int) ([]mo
 	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, userID)
 
 	// Check if posts are cached
-	cachedPosts, err := redisClient.LRange(ctx, cacheKey, 0, -1).Result()
+	cachedPosts, err := db.RedisClient.LRange(ctx, cacheKey, 0, -1).Result()
 	if err == nil && len(cachedPosts) > 0 {
 		var posts []models.Post
 		for _, postJSON := range cachedPosts {
@@ -82,12 +74,12 @@ func GetFriendPosts(ctx context.Context, userID string, offset, limit int) ([]mo
 	for _, post := range posts {
 		postJSON, err := json.Marshal(post)
 		if err == nil {
-			redisClient.LPush(ctx, cacheKey, postJSON)
+			db.RedisClient.LPush(ctx, cacheKey, postJSON)
 		}
 	}
 	// Trim the cache to the last 1000 entries
-	redisClient.LTrim(ctx, cacheKey, 0, cacheLimit-1)
-	redisClient.Expire(ctx, cacheKey, cacheTTL)
+	db.RedisClient.LTrim(ctx, cacheKey, 0, cacheLimit-1)
+	db.RedisClient.Expire(ctx, cacheKey, cacheTTL)
 
 	return posts, nil
 }
